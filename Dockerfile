@@ -1,29 +1,24 @@
-FROM denoland/deno:ubuntu
+FROM ubuntu:16.04
+LABEL Description="Docker Container for the Apple's Swift programming language"
 
-ENV DEBIAN_FRONTEND noninteractive
-
+# Install related packages and set LLVM 3.8 as the compiler
 RUN apt-get -q update && \
     apt-get -q install -y \
-    binutils \
-    git \
-    gnupg2 \
+    make \
     libc6-dev \
-    libcurl4 \
-    libedit2 \
-    libgcc-9-dev \
-    libpython2.7 \
-    libsqlite3-0 \
-    libstdc++-9-dev \
-    libxml2 \
-    libz3-dev \
-    pkg-config \
-    tzdata \
-    uuid-dev \
-    zlib1g-dev \
-    libtinfo5 \
+    clang-3.8 \
     curl \
-    clang \
+    libedit-dev \
+    libpython2.7 \
     libicu-dev \
+    libssl-dev \
+    libxml2 \
+    tzdata \
+    git \
+    libcurl4-openssl-dev \
+    pkg-config \
+    && update-alternatives --quiet --install /usr/bin/clang clang /usr/bin/clang-3.8 100 \
+    && update-alternatives --quiet --install /usr/bin/clang++ clang++ /usr/bin/clang++-3.8 100 \
     && rm -r /var/lib/apt/lists/*
 
 # Everything up to here should cache nicely between Swift versions, assuming dev dependencies change little
@@ -47,7 +42,18 @@ RUN SWIFT_URL=https://swift.org/builds/$SWIFT_BRANCH/$(echo "$SWIFT_PLATFORM" | 
 # Print Installed Swift Version
 RUN swift --version
 
+# Install Deno
+RUN apt-get -qq update \
+  && apt-get -qq -y install curl zip unzip \
+  && curl -fsSL https://deno.land/x/install/install.sh | sh \
+  && apt-get -qq remove curl zip unzip \
+  && apt-get -qq remove --purge -y curl zip unzip \
+  && apt-get -qq -y autoremove \
+  && apt-get -qq clean
+
 WORKDIR /app
+
+ENV PATH "/root/.deno/bin:$PATH"
 
 COPY deps.ts .
 RUN deno cache --reload --unstable deps.ts
@@ -55,5 +61,5 @@ RUN deno cache --reload --unstable deps.ts
 ADD . .
 RUN deno cache --reload --unstable main.ts
 
-EXPOSE 8080
-CMD ["run", "--allow-env", "--allow-net", "--allow-run", "main.ts"]
+EXPOSE 8000
+CMD ["deno", "run", "--allow-env", "--allow-net", "--allow-run", "main.ts"]
