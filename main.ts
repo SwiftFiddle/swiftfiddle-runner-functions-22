@@ -3,6 +3,20 @@ import { serve } from "./deps.ts";
 async function handler(req: Request): Promise<Response> {
   switch (req.method) {
     case "GET": {
+      const url = new URL(req.url);
+      switch (url.pathname) {
+        case "/": {
+          const version = await swiftVersion();
+          return new Response(JSON.stringify({ status: "pass", version }));
+        }
+        case "/healthz": {
+          const version = await swiftVersion();
+          return new Response(JSON.stringify({ status: "pass", version }));
+        }
+        default: {
+          break;
+        }
+      }
       break;
     }
     case "POST": {
