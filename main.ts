@@ -64,6 +64,12 @@ async function run(
   const options = parameters.options || "";
   const timeout = parameters.timeout || 30;
   const color = parameters._color || false;
+  const env = color
+    ? {
+      "TERM": "xterm-256color",
+      "LD_PRELOAD": "./faketty.so",
+    }
+    : undefined;
 
   const command = new Deno.Command(
     "sh",
@@ -72,9 +78,7 @@ async function run(
         "-c",
         `echo '${parameters.code}' | timeout ${timeout} swift ${options} -`,
       ],
-      env: {
-        "TERM": color ? "xterm-256color" : "",
-      },
+      env: env,
     },
   );
   const { stdout, stderr } = await command.output();

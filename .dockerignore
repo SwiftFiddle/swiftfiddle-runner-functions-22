@@ -5,6 +5,8 @@
 .github
 .gitignore
 .vscode
+renovate.json
 Dockerfile
+LICENSE
 README.md
 SECURITY.md
