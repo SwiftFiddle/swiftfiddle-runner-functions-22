@@ -60,8 +60,8 @@ async function runOutput(parameters: RequestParameters): Promise<Response> {
 function runStream(parameters: RequestParameters): Response {
   return new Response(
     zipReadableStreams(
-      spawn(makeVersionCommand(), "version", "version"),
-      spawn(makeSwiftCommand(parameters), "stdout", "stderr"),
+      spawn(makeVersionCommand(), undefined, "version", "version"),
+      spawn(makeSwiftCommand(parameters), parameters.code, "stdout", "stderr"),
     ),
     {
       headers: {
@@ -73,10 +73,20 @@ function runStream(parameters: RequestParameters): Response {
 
 function spawn(
   command: Deno.Command,
+  input: string | undefined,
   stdoutKey: string,
   stderrKey: string,
 ): ReadableStream<Uint8Array> {
   const process = command.spawn();
+
+  if (input) {
+    const stdin = process.stdin;
+    const writer = stdin.getWriter();
+    writer.write(new TextEncoder().encode(input));
+    writer.releaseLock();
+    stdin.close();
+  }
+
   return mergeReadableStreams(
     makeStreamResponse(process.stderr, stderrKey),
     makeStreamResponse(process.stdout, stdoutKey),
@@ -107,19 +117,25 @@ function makeSwiftCommand(
       "LD_PRELOAD": "./faketty.so",
     }
     : undefined;
+  const args = [
+    "-i0",
+    "-oL",
+    "-eL",
+    "timeout",
+    `${timeout}`,
+    command,
+  ];
+  if (options) {
+    args.push(...options.split(" "));
+  }
+  args.push("-");
 
   return new Deno.Command(
     "stdbuf",
     {
-      args: [
-        "-i0",
-        "-oL",
-        "-eL",
-        "sh",
-        "-c",
-        `echo '${parameters.code}' | timeout ${timeout} ${command} ${options} -`,
-      ],
+      args: args,
       env: env,
+      stdin: "piped",
       stdout: "piped",
       stderr: "piped",
     },
